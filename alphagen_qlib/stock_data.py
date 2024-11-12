@@ -5,24 +5,23 @@ import pandas as pd
 import torch
 torch.set_default_device("mps")
 
-
-class FeatureType(IntEnum):
-    OPEN = 0
-    CLOSE = 1
-    HIGH = 2
-    LOW = 3
-    VOLUME = 4
-    VWAP = 5
 # class FeatureType(IntEnum):
 #     OPEN = 0
 #     CLOSE = 1
 #     HIGH = 2
 #     LOW = 3
 #     VOLUME = 4
-#     TAKER_BUY_QUOTE_ASSET_VOLUME = 5
-#     TAKER_BUY_BASE_ASSET_VOLUME = 6
-#     QUOTE_ASSET_VOLUME = 7
-#     NUMBER_OF_TRADES = 8
+#     VWAP = 5
+class FeatureType(IntEnum):
+    OPEN = 0
+    CLOSE = 1
+    HIGH = 2
+    LOW = 3
+    VOLUME = 4
+    TAKER_BUY_QUOTE_ASSET_VOLUME = 5
+    TAKER_BUY_BASE_ASSET_VOLUME = 6
+    QUOTE_ASSET_VOLUME = 7
+    NUMBER_OF_TRADES = 8
 
 class StockData:
     _qlib_initialized: bool = False
@@ -51,10 +50,10 @@ class StockData:
         if cls._qlib_initialized:
             return
         import qlib
-        from qlib.config import REG_CN
-        qlib.init(provider_uri="~/.qlib/qlib_data/cn_data_rolling", region=REG_CN)
-        # from qlib.config import REG_US
-        # qlib.init(provider_uri="./my_data/qlib", region=REG_US)
+        # from qlib.config import REG_CN
+        # qlib.init(provider_uri="~/.qlib/qlib_data/cn_data_rolling", region=REG_CN)
+        from qlib.config import REG_US
+        qlib.init(provider_uri="./my_data/qlib", region=REG_US)
         cls._qlib_initialized = True
 
     def _load_exprs(self, exprs: Union[str, List[str]]) -> pd.DataFrame:
@@ -64,14 +63,14 @@ class StockData:
         from qlib.data import D
         if not isinstance(exprs, list):
             exprs = [exprs]
-        cal: np.ndarray = D.calendar()
+        cal: np.ndarray = D.calendar(freq='min')
         start_index = cal.searchsorted(pd.Timestamp(self._start_time))  # type: ignore
         end_index = cal.searchsorted(pd.Timestamp(self._end_time))  # type: ignore
         real_start_time = cal[start_index - self.max_backtrack_days]
         if cal[end_index] != pd.Timestamp(self._end_time):
             end_index -= 1
         real_end_time = cal[end_index + self.max_future_days]
-        return (QlibDataLoader(config=exprs)  # type: ignore
+        return (QlibDataLoader(config=exprs, freq='min')  # type: ignore
                 .load(self._instrument, real_start_time, real_end_time))
 
     def _get_data(self) -> Tuple[torch.Tensor, pd.Index, pd.Index]:
